@@ -1,3 +1,3 @@
-"Product ID","Product name","Price (NET)"
-"123","Test product 1","10.00"
-"456","Test product 2","20.00"
+"Product ID","Product name","Price EUR (NET)","Price EUR (GROSS)","Price USD (NET)","Price USD (GROSS)"
+"123","Test product 1","10.00","12.30","11.00","13.53"
+"456","Test product 2","20.00","24.60","22.00","27.06"

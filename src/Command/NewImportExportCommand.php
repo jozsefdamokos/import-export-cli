@@ -2,6 +2,7 @@
 
 namespace ImportExport\Command;
 
+use ImportExport\Deserializer\PriceDeserializer;
 use ImportExport\Deserializer\StringDeserializer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -19,6 +20,7 @@ class NewImportExportCommand extends Command
      */
     private array $deserializers = [
         'string' => StringDeserializer::class,
+        'price' => PriceDeserializer::class,
     ];
 
     private array $profile = [
@@ -29,24 +31,76 @@ class NewImportExportCommand extends Command
                 'path' => 'id',
                 'type' => 'string',
             ],
+            // [
+            //     'pathMapping' => [
+            //         'name' => 'Property name',
+            //         'position' => 'Property position',
+            //     ],
+            //     'type' => 'custom',
+            //     'path' => 'properties',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomPropertyDeserializer',
+            // ],
+            // [
+            //     'header' => 'Tags',
+            //     'type' => 'custom',
+            //     'path' => 'tags',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomTagDeserializer',
+            // ],
+            // [
+            //     'header' => 'Product name',
+            //     'path' => 'name',
+            //     'type' => 'string',
+            // ],
+            // [
+            //     'pathMapping' => [
+            //         'EUR.net' => 'Price EUR (NET)',
+            //         'EUR.gross' => 'Price EUR (GROSS)',
+            //         'USD.net' => 'Price USD (NET)',
+            //         'USD.gross' => 'Price USD (GROSS)'
+            //     ],
+            //     'type' => 'custom',
+            //     'path' => 'price',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomPriceDeserializer',
+            // ],
             [
-                'header' => 'Product name',
-                'path' => 'name',
-                'type' => 'string',
-            ],
-            [
-                'header' => 'Price (NET)',
-                'path' => 'price.EUR.net',
+                'pathMapping' => [
+                    'name' => ['Tag1', 'Tag2', 'Tag3'],
+                ],
                 'type' => 'custom',
-                'deserializer' => 'ImportExport\Deserializer\CustomPriceDeserializer',
+                'path' => 'tags',
+                'deserializer' => 'ImportExport\Deserializer\CustomTagsDeserializer',
             ],
+            // [
+            //     'pathMapping' => [
+            //         'EUR.net' => 'Price EUR (NET)',
+            //         'EUR.gross' => 'Price EUR (GROSS)',
+            //         'USD.net' => 'Price USD (NET)',
+            //         'USD.gross' => 'Price USD (GROSS)'
+            //     ],
+            //     'type' => 'price',
+            //     'path' => 'price',
+            // ],
+            // [
+            //     'pathMapping' => [
+            //
+            //     ],
+            //     'type' => 'custom',
+            //     'path' => 'custom.whatever',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomPriceDeserializer',
+            // ],
+            // [
+            //     'header' => 'Test header',
+            //     'type' => 'custom',
+            //     'path' => 'custom.whatever',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomPriceDeserializer',
+            // ],
         ],
     ];
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // get csv from path
-        $file = fopen(__DIR__ . '/../../products.csv', 'r');
+        $file = fopen(__DIR__ . '/../../tags2.csv', 'r');
 
         $csv = [];
 
@@ -64,13 +118,42 @@ class NewImportExportCommand extends Command
             $deserializedRow = [];
 
             foreach ($this->profile['mappings'] as $mapping) {
-                $value = $row[$mapping['header']];
+                if ($mapping['type'] === 'custom') {
 
-                $deserializer = $mapping['type'] === 'custom' ? new $mapping['deserializer']() : new $this->deserializers[$mapping['type']]();
+                    $deserializer = new $mapping['deserializer']();
 
-                $value = $deserializer->deserialize($value);
+                    if (isset($mapping['pathMapping'])) {
+                        $value = [];
+                        foreach ($mapping['pathMapping'] as $key => $header) {
+                            if (\is_array($header)) {
+                                $value[$key] = [];
+                                foreach ($header as $headerKey => $headerValue) {
+                                    $value[$key][$headerKey] = $row[$headerValue];
+                                }
 
-                $deserializedRow[$mapping['path']] = $value;
+                                continue;
+                            }
+
+                            $value[$key] = $row[$header];
+                        }
+
+                        $value = $deserializer->deserialize($value);
+                    } else {
+                        $value = $row[$mapping['header']];
+
+                        $value = $deserializer->deserialize($value);
+                    }
+
+                    $deserializedRow = array_merge_recursive($deserializedRow, $value);
+                } else {
+                    $deserializer = new $this->deserializers[$mapping['type']]();
+
+                    $value = $row[$mapping['header']];
+
+                    $value = $deserializer->deserialize($value);
+
+                    $deserializedRow[$mapping['path']] = $value;
+                }
             }
 
             $deserialized[] = $deserializedRow;
