@@ -1,0 +1,27 @@
+{
+    "name": "import-export/import-export-cli",
+    "description": "import-export/import-export-cli",
+    "type": "shopware-platform-plugin",
+    "version": "1.0.0",
+    "license": "MIT",
+    "require": {
+        "shopware/core": "~6.6.0"
+    },
+    "extra": {
+        "shopware-plugin-class": "ImportExport\\ImportExportCli",
+        "label": {
+            "de-DE": "Import/Export CLI",
+            "en-GB": "Import/Export CLI"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "ImportExport\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ImportExport\\Tests\\": "tests/"
+        }
+    }
+}
