@@ -19,7 +19,11 @@ class NewImportExportCommand extends Command
      * @var array<string, class-string>
      */
     private array $deserializers = [
+        'uuid' => StringDeserializer::class,
         'string' => StringDeserializer::class,
+        'boolean' => StringDeserializer::class,
+        'int' => StringDeserializer::class,
+        'float' => StringDeserializer::class,
         'price' => PriceDeserializer::class,
     ];
 
@@ -29,7 +33,52 @@ class NewImportExportCommand extends Command
             [
                 'header' => 'Product ID',
                 'path' => 'id',
+                'type' => 'uuid',
+            ],
+            [
+                'header' => 'Product number',
+                'path' => 'productNumber',
                 'type' => 'string',
+            ],
+            [
+                'header' => 'Product name',
+                'path' => 'translations.ENG.name',
+                'type' => 'string',
+            ],
+            [
+                'header' => 'Active',
+                'path' => 'active',
+                'type' => 'boolean',
+            ],
+            [
+                'header' => 'Stock',
+                'path' => 'stock',
+                'type' => 'int',
+            ],
+            [
+                'header' => 'Category',
+                'path' => 'categories.name',
+                'type' => 'string',
+            ],
+            [
+                'header' => 'Manufacturer',
+                'path' => 'manufacturer.translations.ENG.name',
+                'type' => 'string',
+            ],
+            [
+                'header' => 'Delivery time',
+                'path' => 'deliveryTime.translations.ENG.name',
+                'type' => 'string',
+            ],
+            [
+                'header' => 'Tax rate',
+                'path' => 'tax.taxRate',
+                'type' => 'float',
+            ],
+            [
+                'header' => 'Price EUR (NET)',
+                'path' => 'price.EUR.net',
+                'type' => 'float',
             ],
             // [
             //     'pathMapping' => [
@@ -62,14 +111,14 @@ class NewImportExportCommand extends Command
             //     'path' => 'price',
             //     'deserializer' => 'ImportExport\Deserializer\CustomPriceDeserializer',
             // ],
-            [
-                'pathMapping' => [
-                    'name' => ['Tag1', 'Tag2', 'Tag3'],
-                ],
-                'type' => 'custom',
-                'path' => 'tags',
-                'deserializer' => 'ImportExport\Deserializer\CustomTagsDeserializer',
-            ],
+            // [
+            //     'pathMapping' => [
+            //         'name' => ['Tag1', 'Tag2', 'Tag3'],
+            //     ],
+            //     'type' => 'custom',
+            //     'path' => 'tags',
+            //     'deserializer' => 'ImportExport\Deserializer\CustomTagsDeserializer',
+            // ],
             // [
             //     'pathMapping' => [
             //         'EUR.net' => 'Price EUR (NET)',
@@ -100,7 +149,7 @@ class NewImportExportCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // get csv from path
-        $file = fopen(__DIR__ . '/../../tags2.csv', 'r');
+        $file = fopen(__DIR__ . '/../../products-to-validate.csv', 'r');
 
         $csv = [];
 
@@ -113,6 +162,8 @@ class NewImportExportCommand extends Command
 
         // deserialize csv data
         $deserialized = [];
+
+        $this->validateCsvAgainstSchema();
 
         foreach ($csv as $row) {
             $deserializedRow = [];
@@ -160,5 +211,86 @@ class NewImportExportCommand extends Command
         }
 
         dd($deserialized);
+    }
+
+    private function validateCsvAgainstSchema(): void
+    {
+        // get entity schema json
+        $schema = file_get_contents(__DIR__ . '/../../../../../src/Administration/Resources/app/administration/test/_mocks_/entity-schema.json');
+
+        // json decode schema
+        $schema = json_decode($schema, true);
+
+        // validate csv against schema
+
+        $entity = $this->profile['entity'];
+
+        $this->checkPathsForEntity($entity, $this->profile['mappings'], $schema);
+    }
+
+
+    private function checkPathsForEntity(string $entityName, array $mappings, array $schema): void
+    {
+        // check if entity exists in schema
+        if (!isset($schema[$entityName])) {
+            throw new \RuntimeException(sprintf('Entity %s not found in schema.', $entityName));
+        }
+
+        foreach ($mappings as $mapping) {
+            if ($mapping['type'] === 'custom') {
+                continue;
+            }
+
+            $path = $mapping['path'];
+
+            $parts = explode('.', $path);
+
+            // check if first path exists in schema
+            if (!isset($schema[$entityName]['properties'][$parts[0]])) {
+                throw new \RuntimeException(sprintf('Path %s not found in %s.', $path, $entityName));
+            }
+
+            if (count($parts) === 1) {
+                // check if type matches schema type
+                if ($schema[$entityName]['properties'][$parts[0]]['type'] !== $mapping['type']) {
+                    throw new \RuntimeException(sprintf(
+                        'Type %s does not match schema type %s for %s in %s',
+                        $mapping['type'],
+                        $schema[$entityName]['properties'][$parts[0]]['type'],
+                        $parts[0],
+                        $entityName
+                    ));
+                }
+            } else {
+                // if its multiple parts it should be an association or json
+                if ($schema[$entityName]['properties'][$parts[0]]['type'] !== 'association' && $schema[$entityName]['properties'][$parts[0]]['type'] !== 'json_object') {
+                    throw new \RuntimeException(sprintf('Path %s in %s is not an association.', $path, $entityName));
+                }
+
+                // we skip json here because we don't know the structure of it, so we cannot validate
+                if ($schema[$entityName]['properties'][$parts[0]]['type'] === 'json_object') {
+                    continue;
+                }
+
+                $paths = array_slice($parts, 1);
+
+                // we skip the language iso code for translations
+                if ($parts[0] === 'translations') {
+                    // todo validate that it's a valid iso code
+
+                    $paths = array_slice($paths, 1);
+                }
+
+                $entity = $schema[$entityName]['properties'][$parts[0]]['entity'];
+                $path = implode('.', $paths);
+
+                $mapping = [
+                    'path' => $path,
+                    'type' => $mapping['type'],
+                ];
+
+                $this->checkPathsForEntity($entity, [$mapping], $schema);
+            }
+        }
     }
 }
