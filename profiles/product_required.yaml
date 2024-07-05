@@ -1,0 +1,46 @@
+# Profile that contains all required fields for a product
+entity: product
+
+filter:
+    # export main products (parentId = NULL) only
+    - type: "equals"
+      field: "parentId"
+      value: null
+
+sort:
+    - field: "name"
+      order: "ASC"
+
+mappings:
+    - file_column: "id"
+      entity_path: "id"
+    - file_column: "product number"
+      entity_path: "productNumber"
+    - file_column: "default name"
+      entity_path: "name"
+    - file_column: "default price net"
+      key: "default_price_net"
+    - file_column: "default price gross"
+      key: "default_price_gross"
+    - file_column: "stock"
+      entity_path: "stock"
+    - file_column: "tax id"
+      entity_path: "taxId"
+    - file_column: "manufacturer name"
+      entity_path: "manufacturer.name"
+
+serialize_script: |
+    {% set defaultCurrencyId = 'b7d2554b0ce847cd82f3ac9bd1c0dfca' %}
+
+    {% set row = row|merge({'default_price_net': entity.price.get(defaultCurrencyId).net|number_format(2) }) %}
+    {% set row = row|merge({'default_price_gross': entity.price.get(defaultCurrencyId).gross|number_format(2) }) %}
+
+deserialize_script: |
+    {% set defaultCurrencyId = 'b7d2554b0ce847cd82f3ac9bd1c0dfca' %}
+
+    {% set entity = entity|merge({'price': [{
+        'net': row['default_price_net'],
+        'gross': row['default_price_gross'],
+        'linked': false,
+        'currencyId': defaultCurrencyId
+    }]}) %}

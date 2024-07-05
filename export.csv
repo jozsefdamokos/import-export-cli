@@ -1,0 +1,6 @@
+id,"product number","default name","default price net","default price gross",stock,"tax id","manufacturer name"
+0190831fbe167034a2f03ab4f670e021,SW00001,"Test Product 1",9.00,13.50,51,0190831fbe167034a2f03ab4f6cbe7ab,"Test Manufacturer"
+0190831fbe167034a2f03ab4f732b271,SW00002,"Test Product 2",18.00,27.00,91,0190831fbe167034a2f03ab4f7f58aa6,"Test Manufacturer"
+0190831fbe167034a2f03ab4f85d410f,SW00003,"Test Product 3",27.00,40.50,69,0190831fbe167034a2f03ab4f87684a9,"Test Manufacturer"
+0190831fbe167034a2f03ab4f8ef86f3,SW00004,"Test Product 4",36.00,54.00,60,0190831fbe167034a2f03ab4f95a6171,"Test Manufacturer"
+0190831fbe167034a2f03ab4f9f00444,SW00005,"Test Product 5",45.00,67.50,64,0190831fbe167034a2f03ab4fa54913e,"Test Manufacturer"
